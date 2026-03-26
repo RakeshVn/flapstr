@@ -36,14 +36,6 @@ export default function App() {
   const showPanelRef = useRef(false);
   useEffect(() => { showPanelRef.current = showPanel; }, [showPanel]);
 
-  // Scroll-driven board position
-  const [scrollY, setScrollY] = useState(0);
-
-  useEffect(() => {
-    const onScroll = () => setScrollY(window.scrollY);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   const initAudio = useCallback(async () => {
     if (audioInitializedRef.current) return;
