@@ -39,41 +39,31 @@
 .volume-icon.muted svg path:last-child,
 .volume-icon.muted svg path:nth-child(2) { display: none; }
 
-/* ── Split Container ── */
-.split-container {
+/* ── Layout ── */
+.hero-section {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   height: 100vh;
   display: flex;
-  flex-direction: column;
-}
-
-.hero-half {
-  height: 50vh;
-  display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
+  z-index: 1;
 }
 
-.board-half {
-  height: 50vh;
+.board-section {
+  position: relative;
+  z-index: 10;
+  margin-top: 100vh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 0 40px;
-  z-index: 10;
-  will-change: transform;
-  position: relative;
   background: #F5F0EB;
 }
-
-/* Scroll spacer to enable scrolling */
-.scroll-spacer {
-  height: 50vh;
 }
 
 /* ── Hero ── */

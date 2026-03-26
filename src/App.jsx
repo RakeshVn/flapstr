@@ -36,14 +36,6 @@ export default function App() {
   const showPanelRef = useRef(false);
   useEffect(() => { showPanelRef.current = showPanel; }, [showPanel]);
 
-  // Scroll-driven board position
-  const [scrollY, setScrollY] = useState(0);
-
-  useEffect(() => {
-    const onScroll = () => setScrollY(window.scrollY);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   const initAudio = useCallback(async () => {
     if (audioInitializedRef.current) return;
@@ -192,43 +184,26 @@ export default function App() {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [next, prev, toggleFullscreen, toggleMute, closePanel]);
 
-  // Board slides from bottom 50% up to vertically center (covering hero)
-  // scrollY 0 → board at bottom half; scrollY = vh/2 → board centered
-  const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
-  const maxScroll = vh * 0.5;
-  const progress = Math.min(1, scrollY / maxScroll);
-  // Start: translateY(0) means bottom half. Move up by 25vh to center.
-  const boardTranslateY = progress * 25; // vh units — starts at 0, moves up to 25vh
-
   return (
     <div className="page-wrapper">
       <Header muted={muted} onVolumeClick={handleVolumeClick} />
 
-      {/* Fixed layout: hero top 50%, board bottom 50% that slides up */}
-      <div className="split-container">
-        <div className="hero-half">
-          <Hero />
-        </div>
-        <div
-          className="board-half"
-          style={{
-            transform: `translateY(-${boardTranslateY}vh)`,
-          }}
-        >
-          <div className="display-frame">
-            <Board ref={boardRef} soundEngine={soundEngineRef.current} />
-          </div>
-          <button className="messages-fab" onClick={openPanel} title="Manage messages">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-            <span>Messages</span>
-          </button>
-        </div>
+      <div className="hero-section">
+        <Hero />
       </div>
 
-      {/* Spacer to allow scrolling */}
-      <div className="scroll-spacer" />
+      <div className="board-section">
+        <div className="display-frame">
+          <Board ref={boardRef} soundEngine={soundEngineRef.current} />
+        </div>
+        <button className="messages-fab" onClick={openPanel} title="Manage messages">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span>Messages</span>
+        </button>
+      </div>
+
 
       {/* Messages panel */}
       {showPanel && (
