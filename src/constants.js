@@ -15,8 +15,8 @@ export const SCRAMBLE_COLORS = [
 ];
 
 export const ACCENT_COLORS = [
-  '#00FF7F', '#FF4D00', '#AA00FF',
-  '#00AAFF', '#00FFCC'
+  '#C850C0', '#8B5CF6', '#C850C0',
+  '#8B5CF6', '#C850C0'
 ];
 
 export const MESSAGES = [
