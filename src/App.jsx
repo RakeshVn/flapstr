@@ -198,7 +198,7 @@ export default function App() {
   const maxScroll = vh * 0.5;
   const progress = Math.min(1, scrollY / maxScroll);
   // Start: translateY(0) means bottom half. Move up by 25vh to center.
-  const boardTranslateY = (1 - progress) * 25; // vh units
+  const boardTranslateY = progress * 25; // vh units — starts at 0, moves up to 25vh
 
   return (
     <div className="page-wrapper">
