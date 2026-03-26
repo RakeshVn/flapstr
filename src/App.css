@@ -125,12 +125,19 @@
 
 /* ── Board ── */
 .board {
-  --tile-size: clamp(36px, 4.2vw, 58px);
-  --tile-gap: clamp(3px, 0.3vw, 5px);
+  /* container-relative sizing: tiles always fit within the board */
+  container-type: inline-size;
+  --h-pad: 96px;            /* must match padding-left + padding-right below */
+  --tile-gap: clamp(2px, 0.4cqi, 5px);
+  --tile-size: clamp(
+    12px,
+    calc((100cqi - var(--h-pad) - 21 * var(--tile-gap)) / 22),
+    58px
+  );
   position: relative;
   background: #1a1a1a;
   border-radius: 3px;
-  padding: 28px 48px 40px;
+  padding: 28px 48px 40px;  /* h-pad = 48*2 = 96px */
   width: 100%;
   overflow: hidden;
 }
@@ -413,23 +420,21 @@
 
 /* ── Responsive ── */
 @media (min-width: 2000px) {
-  .board { --tile-size: 62px; --tile-gap: 5px; padding: 36px 36px 48px; }
+  /* allow larger tiles on wide screens */
+  .board { --tile-size: clamp(12px, calc((100cqi - var(--h-pad) - 21 * var(--tile-gap)) / 22), 70px); }
   .hero h1 { font-size: 68px; }
 }
-@media (max-width: 1200px) {
-  .board { --tile-size: clamp(32px, 4vw, 48px); }
-  .hero h1 { font-size: 44px; }
-}
 @media (max-width: 900px) {
-  .board { --tile-size: clamp(26px, 4.5vw, 38px); padding: 20px 16px 32px; }
+  /* h-pad = 16*2 = 32px */
+  .board { --h-pad: 32px; padding: 20px 16px 32px; }
   .header { padding: 18px 24px; }
   .hero h1 { font-size: 36px; }
   .hero .subtitle { font-size: 16px; }
   .accent-segment { width: 12px; height: 12px; }
-  .board-half { padding: 0 20px; }
 }
 @media (max-width: 600px) {
-  .board { --tile-size: clamp(16px, 3.8vw, 26px); --tile-gap: 2px; padding: 12px 8px 24px; }
+  /* h-pad = 8*2 = 16px */
+  .board { --h-pad: 16px; padding: 12px 8px 24px; }
   .header { padding: 14px 16px; }
   .header-logo { font-size: 20px; }
   .hero h1 { font-size: 26px; letter-spacing: -0.5px; }
@@ -438,7 +443,6 @@
   .keyboard-hint { display: none; }
   .display-frame { padding: 8px 10px 10px; }
   .msg-panel { width: 100%; }
-  .board-half { padding: 0 12px; }
 }
 
 /* ── Fullscreen ── */
@@ -453,5 +457,5 @@
 }
 :fullscreen .display-frame { border-radius: 0; background: #000; padding: 0; box-shadow: none; }
 :fullscreen .messages-fab { display: none; }
-:fullscreen .board { border-radius: 0; --tile-size: clamp(44px, 4vw, 70px); }
+:fullscreen .board { border-radius: 0; --h-pad: 80px; padding: 32px 40px; --tile-size: clamp(12px, calc((100cqi - 80px - 21 * var(--tile-gap)) / 22), 72px); }
 :fullscreen .scroll-spacer { display: none; }
