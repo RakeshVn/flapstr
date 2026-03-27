@@ -2,7 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import Board from './Board';
 import PairingCode from './PairingCode';
 import { SoundEngine } from '../SoundEngine';
-import { MESSAGES, MESSAGE_INTERVAL, TOTAL_TRANSITION, CHARSET, SCRAMBLE_DURATION, FLIP_DURATION, STAGGER_DELAY } from '../constants';
+import { MESSAGES, MESSAGE_INTERVAL, TOTAL_TRANSITION, CHARSET, SCRAMBLE_DURATION, FLIP_DURATION, STAGGER_DELAY, getClockLines } from '../constants';
 import { createPairing, refreshPairing, reconnectPairing, subscribeToEvents, getPairingStatus, sendCommand } from '../api';
 
 const VALID_CHARS = new Set(CHARSET);
@@ -25,17 +25,6 @@ function getGreeting() {
   if (h < 12) return ['', '', '', 'GOOD MORNING', '', ''];
   if (h < 17) return ['', '', '', 'GOOD AFTERNOON', '', ''];
   return ['', '', '', 'GOOD EVENING', '', ''];
-}
-
-function getClockLines() {
-  const now = new Date();
-  const h = now.getHours();
-  const m = String(now.getMinutes()).padStart(2, '0');
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
-  const timeStr = `${h12}:${m} ${ampm}`;
-  const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  return ['', '', timeStr.toUpperCase(), dateStr.toUpperCase().slice(0, 22), '', ''];
 }
 
 export default function TVMode({ onExitTV }) {

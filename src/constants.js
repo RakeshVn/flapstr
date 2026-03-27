@@ -58,3 +58,15 @@ export const MESSAGES = [
     ''
   ]
 ];
+
+/** Board lines for clock mode (TV + mobile remote); matches split-flap layout. */
+export function getClockLines() {
+  const now = new Date();
+  const h = now.getHours();
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  const timeStr = `${h12}:${m} ${ampm}`;
+  const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  return ['', '', timeStr.toUpperCase(), dateStr.toUpperCase().slice(0, 22), '', ''];
+}

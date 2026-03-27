@@ -6,7 +6,7 @@ import TVMode from './components/TVMode';
 import MobileMode from './components/MobileMode';
 import MessageComposer from './components/MessageComposer';
 import { SoundEngine } from './SoundEngine';
-import { MESSAGES, MESSAGE_INTERVAL, TOTAL_TRANSITION, CHARSET, splitGraphemes, isEmojiChar } from './constants';
+import { MESSAGES, MESSAGE_INTERVAL, TOTAL_TRANSITION, CHARSET, splitGraphemes, isEmojiChar, getClockLines } from './constants';
 import { detectDevice } from './deviceDetection';
 import './App.css';
 
@@ -17,6 +17,14 @@ const filterLine = (s) => {
 };
 
 const msgLabel = (lines) => lines.find(l => l.trim()) || 'Message';
+
+/** Stable id for the homepage clock-only message (second slide in rotation). */
+const HOME_CLOCK_MESSAGE_ID = 1;
+
+function buildClockMessageLines() {
+  const timeStr = new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return ['', '', timeStr, '', '', ''];
+}
 
 export default function App() {
   const [mode, setMode] = useState(() => detectDevice());
@@ -78,17 +86,22 @@ function DesktopMode({ onPairDevice }) {
   const rotatorTimerRef = useRef(null);
   const toastTimerRef = useRef(null);
 
-  const [messages, setMessages] = useState(() =>
-    MESSAGES.map((entry, i) => ({
-      id: i,
-      lines: Array.isArray(entry) ? entry : entry.lines,
-      emoji: Array.isArray(entry) ? undefined : entry.emoji,
-    }))
-  );
+  const [messages, setMessages] = useState(() => [
+    {
+      id: 0,
+      lines: [...MESSAGES[0]],
+    },
+    {
+      id: HOME_CLOCK_MESSAGE_ID,
+      lines: getClockLines(),
+    },
+  ]);
   const messagesRef = useRef(messages);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
-  const nextIdRef = useRef(MESSAGES.length);
+  const nextIdRef = useRef(MESSAGES.length + 1);
   const [activeMsgId, setActiveMsgId] = useState(null);
+  const activeMsgIdRef = useRef(activeMsgId);
+  useEffect(() => { activeMsgIdRef.current = activeMsgId; }, [activeMsgId]);
 
   const [showPanel, setShowPanel] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -208,6 +221,28 @@ function DesktopMode({ onPairDevice }) {
     }, MESSAGE_INTERVAL + TOTAL_TRANSITION);
     return () => clearInterval(rotatorTimerRef.current);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    let lastMinute = new Date().getMinutes();
+    const tick = () => {
+      const now = new Date();
+      if (now.getMinutes() === lastMinute) return;
+      lastMinute = now.getMinutes();
+      const lines = getClockLines();
+      setMessages((prev) => {
+        if (!prev.some((m) => m.id === HOME_CLOCK_MESSAGE_ID)) return prev;
+        const next = prev.map((m) =>
+          m.id === HOME_CLOCK_MESSAGE_ID ? { ...m, lines } : m
+        );
+        if (activeMsgIdRef.current === HOME_CLOCK_MESSAGE_ID && boardRef.current && !boardRef.current.isTransitioning) {
+          queueMicrotask(() => boardRef.current?.displayMessage(lines));
+        }
+        return next;
+      });
+    };
+    const intervalId = setInterval(tick, 5000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   useEffect(() => {
     document.addEventListener('click', initAudio);
