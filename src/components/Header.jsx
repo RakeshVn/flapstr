@@ -1,9 +1,28 @@
 import React from 'react';
 
+const GITHUB_REPO = 'https://github.com/RakeshVn/flapstr';
+const GITHUB_STARS_BADGE =
+  'https://img.shields.io/github/stars/RakeshVn/flapstr?style=flat&logo=github&label=stars&color=%231a1a1a&labelColor=%23ebebeb&logoColor=%231a1a1a&cacheSeconds=120';
+
 export default function Header({ muted, onVolumeClick, onPairDevice }) {
   return (
     <header className="header">
       <div className="header-logo">Flapstr.</div>
+      <a
+        className="header-github"
+        href={GITHUB_REPO}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Flapstr on GitHub — star the repo"
+      >
+        <img
+          src={GITHUB_STARS_BADGE}
+          alt="GitHub stars"
+          className="header-github-badge"
+          height={20}
+          decoding="async"
+        />
+      </a>
       <div className="header-actions">
         {onPairDevice && (
           <button className="header-btn tv-mode-toggle" onClick={onPairDevice} title="Pair with mobile">
