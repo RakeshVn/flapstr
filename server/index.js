@@ -164,6 +164,36 @@ app.post('/api/pairing/refresh', async (req, res) => {
   }
 });
 
+// TV reconnects to existing session after refresh
+app.post('/api/pairing/reconnect', async (req, res) => {
+  const { pairingId, tvSessionId } = req.body;
+  if (!pairingId || !tvSessionId) return res.status(400).json({ error: 'Missing fields' });
+
+  if (useInMemory) {
+    const p = memPairings.get(pairingId);
+    if (!p || p.tvSessionId !== tvSessionId || !p.active) {
+      return res.status(404).json({ error: 'Session expired' });
+    }
+    return res.json({
+      pairingId: p._id,
+      code: p.code,
+      tvSessionId: p.tvSessionId,
+      paired: p.connectedDevices.length > 0,
+      connectedDevices: p.connectedDevices.length,
+    });
+  } else {
+    const p = await pairingsCol.findOne({ _id: pairingId, tvSessionId, active: true });
+    if (!p) return res.status(404).json({ error: 'Session expired' });
+    return res.json({
+      pairingId: p._id,
+      code: p.code,
+      tvSessionId: p.tvSessionId,
+      paired: p.connectedDevices.length > 0,
+      connectedDevices: p.connectedDevices.length,
+    });
+  }
+});
+
 // Mobile joins with code
 app.post('/api/pairing/join', async (req, res) => {
   const { code } = req.body;

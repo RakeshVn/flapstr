@@ -3,7 +3,7 @@ import Board from './Board';
 import PairingCode from './PairingCode';
 import { SoundEngine } from '../SoundEngine';
 import { MESSAGES, MESSAGE_INTERVAL, TOTAL_TRANSITION, CHARSET, SCRAMBLE_DURATION, FLIP_DURATION, STAGGER_DELAY } from '../constants';
-import { createPairing, refreshPairing, subscribeToEvents, getPairingStatus } from '../api';
+import { createPairing, refreshPairing, reconnectPairing, subscribeToEvents, getPairingStatus } from '../api';
 
 const VALID_CHARS = new Set(CHARSET);
 const filterLine = (s) =>
@@ -70,6 +70,12 @@ export default function TVMode({ onExitTV }) {
   // Reconnect from localStorage
   const savedPairingRef = useRef(null);
 
+  // Queue for commands received before board is mounted
+  const pendingCommandRef = useRef(null);
+
+  // Auto-hide connected badge
+  const [showBadge, setShowBadge] = useState(false);
+
   const initAudio = useCallback(async () => {
     if (audioInitRef.current) return;
     audioInitRef.current = true;
@@ -78,24 +84,45 @@ export default function TVMode({ onExitTV }) {
   }, []);
 
   const displayOnBoard = useCallback((lines) => {
-    if (!boardRef.current || boardRef.current.isTransitioning) return;
+    if (!boardRef.current) {
+      // Board not mounted yet — queue the command
+      pendingCommandRef.current = lines;
+      return;
+    }
+    if (boardRef.current.isTransitioning) return;
     boardRef.current.displayMessage(lines);
     if (soundOn) soundEngineRef.current.playTransition();
   }, [soundOn]);
 
-  // Initialize pairing
+  // Initialize pairing — try reconnecting to saved session first
   useEffect(() => {
     let cancelled = false;
 
     async function init() {
       try {
-        // Check localStorage for existing pairing
+        // Try reconnecting to existing session from localStorage
         const saved = localStorage.getItem('flapstr_tv_pairing');
         if (saved) {
           const { pairingId: savedId, tvSessionId: savedTvId } = JSON.parse(saved);
-          savedPairingRef.current = { pairingId: savedId, tvSessionId: savedTvId };
+          try {
+            const reconn = await reconnectPairing(savedId, savedTvId);
+            if (cancelled) return;
+            setPairingId(reconn.pairingId);
+            setTvSessionId(reconn.tvSessionId);
+            setCode(reconn.code);
+            setSecondsLeft(300);
+            if (reconn.paired) {
+              setPaired(true);
+              setConnectedCount(reconn.connectedDevices);
+            }
+            return; // Successfully reconnected
+          } catch {
+            // Session expired or not found — create new
+            localStorage.removeItem('flapstr_tv_pairing');
+          }
         }
 
+        // No saved session or reconnect failed — create new
         const data = await createPairing();
         if (cancelled) return;
         setPairingId(data.pairingId);
@@ -123,6 +150,8 @@ export default function TVMode({ onExitTV }) {
       switch (data.type) {
         case 'device_connected':
           setConnectedCount(data.payload.count);
+          setShowBadge(true);
+          setTimeout(() => setShowBadge(false), 2000);
           if (!paired) {
             setShowConfetti(true);
             setTimeout(() => {
@@ -184,6 +213,8 @@ export default function TVMode({ onExitTV }) {
         const status = await getPairingStatus(pairingId);
         if (status.connectedDevices > 0) {
           setConnectedCount(status.connectedDevices);
+          setShowBadge(true);
+          setTimeout(() => setShowBadge(false), 2000);
           setShowConfetti(true);
           setTimeout(() => {
             setPaired(true);
@@ -218,6 +249,15 @@ export default function TVMode({ onExitTV }) {
 
     return () => clearInterval(timer);
   }, [paired, pairingId, tvSessionId]);
+
+  // Flush pending command when board mounts after pairing
+  useEffect(() => {
+    if (paired && boardRef.current && pendingCommandRef.current) {
+      const lines = pendingCommandRef.current;
+      pendingCommandRef.current = null;
+      setTimeout(() => displayOnBoard(lines), 500);
+    }
+  }, [paired, displayOnBoard]);
 
   // Auto-rotate default messages when not paired
   useEffect(() => {
@@ -327,11 +367,11 @@ export default function TVMode({ onExitTV }) {
         </div>
       )}
 
-      {/* Connected indicator - bottom right */}
-      {paired && (
+      {/* Connected indicator - bottom right, auto-hides */}
+      {paired && showBadge && (
         <div className="tv-connected-badge">
           <span className="tv-connected-dot" />
-          {connectedCount} device{connectedCount !== 1 ? 's' : ''} connected
+          Mobile device connected
         </div>
       )}
 

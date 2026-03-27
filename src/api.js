@@ -41,6 +41,13 @@ export function getPairingStatus(pairingId) {
   return request(`/pairing/status/${pairingId}`);
 }
 
+export function reconnectPairing(pairingId, tvSessionId) {
+  return request('/pairing/reconnect', {
+    method: 'POST',
+    body: JSON.stringify({ pairingId, tvSessionId }),
+  });
+}
+
 export function disconnect(pairingId, deviceId) {
   return request('/pairing/disconnect', {
     method: 'POST',

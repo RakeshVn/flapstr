@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { sendCommand, disconnect, getPairingStatus } from '../api';
-import { CHARSET } from '../constants';
+import { CHARSET, EMOJI_CATEGORIES, splitGraphemes, isEmojiChar } from '../constants';
 
 const VALID_CHARS = new Set(CHARSET);
-const filterLine = (s) =>
-  s.toUpperCase().split('').filter(c => VALID_CHARS.has(c)).join('').slice(0, 22);
+const filterLine = (s) => {
+  const graphemes = splitGraphemes(s.toUpperCase());
+  return graphemes.filter(g => VALID_CHARS.has(g) || isEmojiChar(g)).slice(0, 22).join('');
+};
 
 const QUICK_MESSAGES = {
   quotes: [
@@ -52,6 +54,27 @@ export default function RemoteControl({ pairingId, deviceId, onDisconnect }) {
   });
   const [showSaved, setShowSaved] = useState(false);
   const [activeSection, setActiveSection] = useState('message'); // message, quick, settings
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [emojiCategory, setEmojiCategory] = useState(0);
+  const textareaRef = useRef(null);
+  const emojiPickerRef = useRef(null);
+
+  // Close emoji picker on outside click
+  useEffect(() => {
+    if (!showEmojiPicker) return;
+    function handleClick(e) {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target) &&
+          !e.target.closest('.rc-emoji-btn')) {
+        setShowEmojiPicker(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('touchstart', handleClick);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('touchstart', handleClick);
+    };
+  }, [showEmojiPicker]);
 
   // Settings
   const [flipSpeed, setFlipSpeed] = useState('medium');
@@ -81,6 +104,26 @@ export default function RemoteControl({ pairingId, deviceId, onDisconnect }) {
       console.error('Send failed:', err);
     }
   }, [pairingId, deviceId]);
+
+  function insertEmoji(emoji) {
+    const el = textareaRef.current;
+    if (!el) {
+      setMessage(prev => prev + emoji);
+      return;
+    }
+    const start = el.selectionStart ?? message.length;
+    const end = el.selectionEnd ?? message.length;
+    const before = message.slice(0, start);
+    const after = message.slice(end);
+    const newMsg = before + emoji + after;
+    setMessage(newMsg);
+    // Keep picker open for multi-insert; restore cursor
+    setTimeout(() => {
+      el.focus();
+      const pos = start + emoji.length;
+      el.setSelectionRange(pos, pos);
+    }, 0);
+  }
 
   function sendMessage() {
     if (!message.trim()) return;
@@ -213,13 +256,44 @@ export default function RemoteControl({ pairingId, deviceId, onDisconnect }) {
             <div className="rc-card">
               <div className="rc-card-header">
                 <h3>Custom Message</h3>
-                <button className="rc-save-btn" onClick={saveCurrentMessage} title="Save message">
+                <button
+                  className={`rc-emoji-btn ${showEmojiPicker ? 'active' : ''}`}
+                  onClick={() => setShowEmojiPicker(v => !v)}
+                  title="Insert emoji"
+                >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+                    <circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
                   </svg>
                 </button>
               </div>
+              {showEmojiPicker && (
+                <div className="rc-emoji-picker" ref={emojiPickerRef}>
+                  <div className="rc-emoji-tabs">
+                    {EMOJI_CATEGORIES.map((cat, i) => (
+                      <button
+                        key={cat.label}
+                        className={`rc-emoji-tab ${emojiCategory === i ? 'active' : ''}`}
+                        onMouseDown={e => { e.preventDefault(); setEmojiCategory(i); }}
+                      >
+                        {cat.icon}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="rc-emoji-grid">
+                    {EMOJI_CATEGORIES[emojiCategory].emojis.map(e => (
+                      <button
+                        key={e}
+                        className="rc-emoji-opt"
+                        onMouseDown={ev => { ev.preventDefault(); insertEmoji(e); }}
+                      >
+                        {e}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <textarea
+                ref={textareaRef}
                 className="rc-message-input"
                 value={message}
                 onChange={e => setMessage(e.target.value)}
@@ -227,12 +301,19 @@ export default function RemoteControl({ pairingId, deviceId, onDisconnect }) {
                 rows={4}
                 maxLength={140}
               />
-              <button className="rc-send-btn" onClick={sendMessage} disabled={!message.trim()}>
-                Send to Board
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                </svg>
-              </button>
+              <div className="rc-send-row">
+                <button className="rc-save-btn" onClick={saveCurrentMessage} title="Save message">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+                  </svg>
+                </button>
+                <button className="rc-send-btn rc-send-btn-sm" onClick={sendMessage} disabled={!message.trim()}>
+                  Send
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                  </svg>
+                </button>
+              </div>
             </div>
 
             {/* Saved messages */}
@@ -275,7 +356,7 @@ export default function RemoteControl({ pairingId, deviceId, onDisconnect }) {
                   onClick={() => activeMode === 'quotes' ? stopMode() : startMode('quotes')}
                 >
                   <span className="rc-mode-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21z"/>
                       <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/>
                     </svg>
@@ -289,7 +370,7 @@ export default function RemoteControl({ pairingId, deviceId, onDisconnect }) {
                   onClick={() => activeMode === 'clock' ? stopMode() : startMode('clock')}
                 >
                   <span className="rc-mode-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                     </svg>
                   </span>
@@ -302,7 +383,7 @@ export default function RemoteControl({ pairingId, deviceId, onDisconnect }) {
                   onClick={() => activeMode === 'weather' ? stopMode() : fetchWeather()}
                 >
                   <span className="rc-mode-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/>
                     </svg>
                   </span>
@@ -315,7 +396,7 @@ export default function RemoteControl({ pairingId, deviceId, onDisconnect }) {
                   onClick={() => activeMode === 'greeting' ? stopMode() : startMode('greeting')}
                 >
                   <span className="rc-mode-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                     </svg>
                   </span>
