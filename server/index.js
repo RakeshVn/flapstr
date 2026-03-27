@@ -18,7 +18,6 @@ const CODE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 let db = null;
 let pairingsCol = null;
 let commandsCol = null;
-let changeStream = null;
 let useInMemory = !MONGODB_URI;
 
 // In-memory fallback store
@@ -36,13 +35,19 @@ function generateId() {
   return crypto.randomUUID();
 }
 
-// Broadcast command to all SSE clients for a pairingId
+// Broadcast to all SSE clients for a pairingId (always string keys — matches URL params / JSON body)
 function broadcast(pairingId, data) {
-  const clients = sseClients.get(pairingId);
+  const id = String(pairingId);
+  const clients = sseClients.get(id);
   if (!clients) return;
   const payload = `data: ${JSON.stringify(data)}\n\n`;
   for (const res of clients) {
-    res.write(payload);
+    try {
+      res.write(payload);
+    } catch (e) {
+      /* eslint-disable no-console */
+      console.warn('SSE write failed:', e.message);
+    }
   }
 }
 
@@ -63,22 +68,8 @@ async function connectMongo() {
     // TTL index on commands – expire after 1 hour
     await commandsCol.createIndex({ createdAt: 1 }, { expireAfterSeconds: 3600 });
 
-    // Watch commands collection for real-time push
-    changeStream = commandsCol.watch(
-      [{ $match: { operationType: 'insert' } }],
-      { fullDocument: 'updateLookup' }
-    );
-    changeStream.on('change', (change) => {
-      const doc = change.fullDocument;
-      if (doc && doc.pairingId) {
-        broadcast(doc.pairingId, {
-          type: doc.type,
-          payload: doc.payload,
-          from: doc.from,
-          timestamp: doc.createdAt,
-        });
-      }
-    });
+    // Real-time command push: broadcast() in POST /pairing/command after insertOne.
+    // (Avoids change-stream delays; nginx must not buffer SSE — see X-Accel-Buffering on events route.)
 
     useInMemory = false;
     console.log('Connected to MongoDB Atlas');
@@ -237,11 +228,15 @@ app.post('/api/pairing/command', async (req, res) => {
   };
 
   if (useInMemory) {
-    // Directly broadcast for in-memory mode
     broadcast(pairingId, { type, payload, from: deviceId, timestamp: Date.now() });
   } else {
     await commandsCol.insertOne(command);
-    // Change stream will handle broadcast
+    broadcast(String(pairingId), {
+      type,
+      payload,
+      from: deviceId,
+      timestamp: command.createdAt,
+    });
   }
 
   res.json({ ok: true });
@@ -294,25 +289,33 @@ app.post('/api/pairing/disconnect', async (req, res) => {
 
 // SSE endpoint – both TV and mobile subscribe here
 app.get('/api/pairing/events/:pairingId', (req, res) => {
-  const { pairingId } = req.params;
+  const pairingId = String(req.params.pairingId);
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
+    'Cache-Control': 'no-cache, no-transform',
     Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
     'Access-Control-Allow-Origin': '*',
   });
-  res.write('\n');
+  if (typeof res.flushHeaders === 'function') {
+    res.flushHeaders();
+  }
+  // Initial chunk so browsers / reverse proxies flush (pending → open)
+  res.write(': sse-open\n\n');
 
   if (!sseClients.has(pairingId)) {
     sseClients.set(pairingId, new Set());
   }
   sseClients.get(pairingId).add(res);
 
-  // Send heartbeat every 30s
   const heartbeat = setInterval(() => {
-    res.write(': heartbeat\n\n');
-  }, 30000);
+    try {
+      res.write(': heartbeat\n\n');
+    } catch {
+      /* connection closed */
+    }
+  }, 25000);
 
   req.on('close', () => {
     clearInterval(heartbeat);
