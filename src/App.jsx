@@ -276,6 +276,16 @@ function DesktopMode({ onPairDevice }) {
           e.preventDefault();
           toggleMute();
           break;
+        case 'b':
+        case 'B':
+          e.preventDefault();
+          initAudio();
+          if (showModalRef.current || showPanelRef.current) {
+            closeMessagesUi();
+          } else {
+            openPanel();
+          }
+          break;
         case 'Escape':
           if (showModalRef.current || showPanelRef.current) {
             closeMessagesUi();
@@ -291,7 +301,7 @@ function DesktopMode({ onPairDevice }) {
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [next, prev, toggleFullscreen, toggleMute, closeMessagesUi]);
+  }, [next, prev, toggleFullscreen, toggleMute, closeMessagesUi, openPanel, initAudio]);
 
   return (
     <div className="page-wrapper">
@@ -309,7 +319,7 @@ function DesktopMode({ onPairDevice }) {
             <div className="board-controls">
             {/* Messages popup */}
             <div className="popup-wrap">
-              <button className="ctrl-btn" onClick={openPanel} title="Messages">
+              <button className="ctrl-btn" onClick={openPanel} title="Messages (B)">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 </svg>
@@ -364,10 +374,9 @@ function DesktopMode({ onPairDevice }) {
 
             {/* Info / shortcuts popup */}
             <div className="popup-wrap">
-              <button className="ctrl-btn" title="Keyboard shortcuts" onClick={() => setShowShortcuts(v => !v)}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="6" width="20" height="12" rx="2"/>
-                  <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/>
+              <button className="ctrl-btn" title="Shortcuts" onClick={() => setShowShortcuts(v => !v)}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
                 </svg>
               </button>
               {showShortcuts && (
@@ -375,9 +384,7 @@ function DesktopMode({ onPairDevice }) {
                   <div className="popup-backdrop" onClick={() => setShowShortcuts(false)} />
                   <div className="popup shortcuts-popup">
                     <div className="popup-section-label">Shortcuts</div>
-                    <div className="shortcut-row"><span>Custom message</span><kbd>Enter</kbd></div>
-                    <div className="shortcut-row"><span>Next</span><kbd>Space / →</kbd></div>
-                    <div className="shortcut-row"><span>Previous</span><kbd>←</kbd></div>
+                    <div className="shortcut-row"><span>Messages</span><kbd>B</kbd></div>
                     <div className="shortcut-row"><span>Fullscreen</span><kbd>F</kbd></div>
                     <div className="shortcut-row"><span>Mute</span><kbd>M</kbd></div>
                   </div>
