@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import CodeEntry from './CodeEntry';
 import RemoteControl from './RemoteControl';
-import { joinPairing, subscribeToEvents } from '../api';
+import { joinPairing } from '../api';
 
-export default function MobileMode() {
+export default function MobileMode({ onClose }) {
   const [screen, setScreen] = useState('connect'); // connect, entering, paired
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -69,20 +69,26 @@ export default function MobileMode() {
       {/* Connect screen */}
       {screen === 'connect' && !showSuccess && (
         <div className="mobile-connect">
-          <div className="mobile-logo">Flapstr.</div>
-          <div className="mobile-hero">
-            <h1>Remote Control</h1>
-            <p>Control your split-flap display from your phone</p>
+          {onClose && (
+            <button type="button" className="mobile-back-btn" onClick={onClose} aria-label="Back to home">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12" />
+                <polyline points="12 19 5 12 12 5" />
+              </svg>
+            </button>
+          )}
+          <div className="mobile-connect-lead">
+            <h2 className="mobile-connect-title">Pair with your TV</h2>
+            <p className="mobile-connect-sub">Open Flapstr on the TV, tap Pair Device, then enter the code here.</p>
           </div>
-          <button className="mobile-connect-btn" onClick={() => setScreen('entering')}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <button type="button" className="mobile-connect-btn" onClick={() => setScreen('entering')}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
               <line x1="8" y1="21" x2="16" y2="21"/>
               <line x1="12" y1="17" x2="12" y2="21"/>
             </svg>
-            Connect to TV
+            Enter pairing code
           </button>
-          <p className="mobile-hint">Open Flapstr on your TV to get a pairing code</p>
         </div>
       )}
 

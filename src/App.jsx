@@ -20,6 +20,7 @@ const msgLabel = (lines) => lines.find(l => l.trim()) || 'Message';
 export default function App() {
   const [mode, setMode] = useState(() => detectDevice());
   const [tvModeForced, setTvModeForced] = useState(false);
+  const [mobilePairingOpen, setMobilePairingOpen] = useState(false);
 
   // Listen for resize to update mode detection
   useEffect(() => {
@@ -32,9 +33,13 @@ export default function App() {
     return () => window.removeEventListener('resize', onResize);
   }, [tvModeForced]);
 
-  // Mobile mode
-  if (mode === 'mobile') {
-    return <MobileMode />;
+  useEffect(() => {
+    if (mode !== 'mobile') setMobilePairingOpen(false);
+  }, [mode]);
+
+  // Mobile pairing flow (opened from homepage header)
+  if (mobilePairingOpen && mode === 'mobile') {
+    return <MobileMode onClose={() => setMobilePairingOpen(false)} />;
   }
 
   // TV mode (auto-detected or forced)
@@ -49,12 +54,20 @@ export default function App() {
     );
   }
 
-  // Desktop mode — original UI with TV Mode toggle
-  return <DesktopMode onEnterTV={() => setTvModeForced(true)} />;
+  // Desktop + mobile homepage — same UI; Pair Device opens TV mode or mobile pairing
+  return (
+    <DesktopMode
+      onPairDevice={
+        mode === 'mobile'
+          ? () => setMobilePairingOpen(true)
+          : () => setTvModeForced(true)
+      }
+    />
+  );
 }
 
 // ── Desktop Mode (original UI) ──────────────────────────────────────────
-function DesktopMode({ onEnterTV }) {
+function DesktopMode({ onPairDevice }) {
   const boardRef = useRef(null);
   const soundEngineRef = useRef(new SoundEngine());
   const [muted, setMuted] = useState(false);
@@ -279,17 +292,18 @@ function DesktopMode({ onEnterTV }) {
 
   return (
     <div className="page-wrapper">
-      <Header muted={muted} onVolumeClick={handleVolumeClick} onEnterTV={onEnterTV} />
+      <Header muted={muted} onVolumeClick={handleVolumeClick} onPairDevice={onPairDevice} />
 
       <div className="single-screen">
-        <div className="hero-area">
-          <Hero />
-        </div>
-        <div className="board-area">
-          <div className="display-frame">
-            <Board ref={boardRef} soundEngine={soundEngineRef.current} />
+        <div className="single-screen-stack">
+          <div className="hero-area">
+            <Hero />
           </div>
-          <div className="board-controls">
+          <div className="board-area">
+            <div className="display-frame">
+              <Board ref={boardRef} soundEngine={soundEngineRef.current} />
+            </div>
+            <div className="board-controls">
             {/* Messages popup */}
             <div className="popup-wrap">
               <button className="ctrl-btn" onClick={openPanel} title="Messages">
@@ -434,6 +448,7 @@ function DesktopMode({ onEnterTV }) {
               )}
             </div>
           </div>
+        </div>
         </div>
       </div>
 
