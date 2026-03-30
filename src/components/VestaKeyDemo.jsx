@@ -49,8 +49,6 @@ const css = `
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
-  overflow: visible;
-  z-index: 0;
 }
 .solari-front,
 .solari-flip-front,
@@ -101,45 +99,32 @@ const css = `
   overflow: hidden;
   border-radius: 0 0 4px 4px;
 }
-.solari-notch {
+.solari-segment::before {
+  content: '';
   position: absolute;
   top: 50%;
+  left: -5px;
+  transform: translateY(-50%);
   width: 10px;
-  height: 12px;
+  height: 10px;
   border-radius: 50%;
   background: #1a1a1a;
-  transform: translateY(-50%);
-  z-index: 30;
+  z-index: 20;
   pointer-events: none;
-  box-shadow: inset 1px 0 2px rgba(0,0,0,0.6);
 }
-.solari-notch-left {
-  left: -5px;
-}
-.solari-notch-right {
-  right: -5px;
-}
-.solari-flap-stack {
+.solari-segment::after {
+  content: '';
   position: absolute;
-  bottom: -12px;
-  left: 0;
-  right: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  z-index: -1;
+  top: 50%;
+  right: -5px;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #1a1a1a;
+  z-index: 20;
+  pointer-events: none;
 }
-.solari-flap-stack-line {
-  height: 2px;
-  background: #0f0f0f;
-  border-radius: 0 0 1px 1px;
-  box-shadow: 0 1px 0 rgba(255,255,255,0.03), inset 0 -1px 0 rgba(0,0,0,0.4);
-}
-.solari-flap-stack-line:nth-child(1) { width: calc(100% - 4px); }
-.solari-flap-stack-line:nth-child(2) { width: calc(100% - 8px); }
-.solari-flap-stack-line:nth-child(3) { width: calc(100% - 12px); opacity: 0.7; }
-.solari-flap-stack-line:nth-child(4) { width: calc(100% - 16px); opacity: 0.4; }
 `;
 
 // ── Character set ────────────────────────────────────────────────────
@@ -231,21 +216,11 @@ function SolariSegment({ target, width, height, fontSize, flipSpeed }) {
   const half = height / 2;
 
   return (
-    <li className="solari-segment" style={{ width, height: height + 14, fontSize, paddingBottom: 14 }}>
-      <div style={{ position: 'relative', width, height }}>
-        <div className="solari-notch solari-notch-left" />
-        <div className="solari-notch solari-notch-right" />
-        <div ref={frontRef} className="solari-front" style={{ lineHeight: height + 'px' }} />
-        <div ref={flipBackRef} className="solari-flip-back" style={{ lineHeight: height + 'px', transformOrigin: `0 ${half}px` }} />
-        <div ref={flipFrontRef} className="solari-flip-front" style={{ transformOrigin: `0 ${half}px` }} />
-        <div ref={backRef} className="solari-back" />
-        <div className="solari-flap-stack">
-          <div className="solari-flap-stack-line" />
-          <div className="solari-flap-stack-line" />
-          <div className="solari-flap-stack-line" />
-          <div className="solari-flap-stack-line" />
-        </div>
-      </div>
+    <li className="solari-segment" style={{ width, height, fontSize }}>
+      <div ref={frontRef} className="solari-front" style={{ lineHeight: height + 'px' }} />
+      <div ref={flipBackRef} className="solari-flip-back" style={{ lineHeight: height + 'px', transformOrigin: `0 ${half}px` }} />
+      <div ref={flipFrontRef} className="solari-flip-front" style={{ transformOrigin: `0 ${half}px` }} />
+      <div ref={backRef} className="solari-back" />
     </li>
   );
 }
