@@ -9,6 +9,7 @@ import MessageComposer, { linesToDraftText } from './components/MessageComposer'
 import { SoundEngine } from './SoundEngine';
 import { MESSAGES, HOME_MESSAGE_PAUSE_MS, TOTAL_TRANSITION, CHARSET, splitGraphemes, isEmojiChar, getClockLines } from './constants';
 import { detectDevice } from './deviceDetection';
+import { useCastSession } from './hooks/useCastSession';
 import './App.css';
 
 const VALID_CHARS = new Set(CHARSET);
@@ -23,13 +24,22 @@ const msgLabel = (lines) => lines.find(l => l.trim()) || 'Message';
 const HOME_CLOCK_MESSAGE_ID = 1;
 
 export default function App() {
-  // Demo page route
+
   if (window.location.pathname === '/demo/vestakey') {
     return <VestaKeyDemo />;
   }
 
-  const [mode, setMode] = useState(() => detectDevice());
-  const [tvModeForced, setTvModeForced] = useState(false);
+  const [mode, setMode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tv') === '1') return 'tv';
+    return detectDevice();
+  });
+
+  const [tvModeForced, setTvModeForced] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tv') === '1';
+  });
+
   const [mobilePairingOpen, setMobilePairingOpen] = useState(false);
 
   // Listen for resize to update mode detection
@@ -47,8 +57,8 @@ export default function App() {
     if (mode !== 'mobile') setMobilePairingOpen(false);
   }, [mode]);
 
-  // Mobile pairing flow (opened from homepage header)
-  if (mobilePairingOpen && mode === 'mobile') {
+  // Mobile pairing flow (opened from homepage header on mobile, or via cast on any device)
+  if (mobilePairingOpen) {
     return <MobileMode onClose={() => setMobilePairingOpen(false)} />;
   }
 
@@ -64,6 +74,8 @@ export default function App() {
     );
   }
 
+  const tvUrl = `${window.location.origin}${window.location.pathname}?tv=1`;
+
   // Desktop + mobile homepage — same UI; Pair Device opens TV mode or mobile pairing
   return (
     <DesktopMode
@@ -73,12 +85,14 @@ export default function App() {
           ? () => setMobilePairingOpen(true)
           : () => setTvModeForced(true)
       }
+      tvUrl={tvUrl}
     />
   );
 }
 
 // ── Desktop Mode (original UI) ──────────────────────────────────────────
-function DesktopMode({ onPairDevice, isMobile }) {
+function DesktopMode({ onPairDevice, isMobile, tvUrl }) {
+  const { isAvailable: isCastAvailable, isConnected: isCasting, startCasting, stopCasting } = useCastSession();
   const boardRef = useRef(null);
   const soundEngineRef = useRef(new SoundEngine());
   const [muted, setMuted] = useState(false);
@@ -107,6 +121,7 @@ function DesktopMode({ onPairDevice, isMobile }) {
 
   const [showPanel, setShowPanel] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showCast, setShowCast] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [addingNew, setAddingNew] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState(null);
@@ -165,7 +180,7 @@ function DesktopMode({ onPairDevice, isMobile }) {
     if (document.fullscreenElement) {
       document.exitFullscreen();
     } else {
-      document.documentElement.requestFullscreen().catch(() => {});
+      document.documentElement.requestFullscreen().catch(() => { });
     }
   }, []);
 
@@ -362,95 +377,133 @@ function DesktopMode({ onPairDevice, isMobile }) {
               <Board ref={boardRef} soundEngine={soundEngineRef.current} />
             </div>
             <div className="board-controls">
-            {/* Messages popup */}
-            <div className="popup-wrap">
-              <button className="ctrl-btn" onClick={openPanel} title="Messages (B)">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                </svg>
-              </button>
-              {showPanel && (
-                <>
-                  <div className="popup-backdrop" onClick={closeMessagesUi} />
-                  <div className="popup msg-popup">
-                    <div className="popup-header-row">
-                      <span className="popup-section-label">Messages</span>
-                      <button className="popup-expand-btn" title="Expand" onClick={() => { setShowPanel(false); setShowModal(true); }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
-                        </svg>
-                      </button>
-                    </div>
-                    <div className="msg-list">
-                      {messages.map(msg => (
-                        <div
-                          key={msg.id}
-                          className={`msg-item${activeMsgId === msg.id ? ' active' : ''}`}
-                          onClick={() => displayById(msg.id)}
-                        >
-                          {msg.emoji && <span className="msg-emoji">{msg.emoji}</span>}
-                          <div className="msg-item-content">
-                            <div className="msg-item-label">{msgLabel(msg.lines)}</div>
-                            <div className="msg-item-preview">{msg.lines.filter(l => l.trim()).join(' · ')}</div>
-                          </div>
-                          <div className="msg-item-actions">
-                            {msg.id !== HOME_CLOCK_MESSAGE_ID && (
-                              <button type="button" className="msg-item-edit" title="Edit" onClick={(e) => startEditMessage(msg, e)}>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                </svg>
-                              </button>
-                            )}
-                            <button type="button" className="msg-item-delete" onClick={(e) => deleteMessage(msg.id, e)}>×</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    {(addingNew || editingMessageId !== null) ? (
-                      <MessageComposer
-                        className="add-form"
-                        value={draftText}
-                        onChange={setDraftText}
-                        filterLine={filterLine}
-                        title={editingMessageId !== null ? 'Edit message' : 'New message'}
-                        variant="panel"
-                        submitLabel={editingMessageId !== null ? 'Save' : 'Add'}
-                        onCancel={cancelComposer}
-                        onSubmit={finishComposer}
-                        autoFocus
-                      />
-                    ) : (
-                      <button type="button" className="add-new-btn" onClick={() => { setEditingMessageId(null); setAddingNew(true); setDraftText(''); }}>+ New message</button>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Info / shortcuts popup (desktop / tablet only) */}
-            {!isMobile && (
+              {/* Messages popup */}
               <div className="popup-wrap">
-                <button type="button" className="ctrl-btn" title="Shortcuts" onClick={() => setShowShortcuts(v => !v)}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
+                <button className="ctrl-btn" onClick={openPanel} title="Messages (B)">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                   </svg>
                 </button>
-                {showShortcuts && (
+                {showPanel && (
                   <>
-                    <div className="popup-backdrop" onClick={() => setShowShortcuts(false)} />
-                    <div className="popup shortcuts-popup">
-                      <div className="popup-section-label">Shortcuts</div>
-                      <div className="shortcut-row"><span>Messages</span><kbd>B</kbd></div>
-                      <div className="shortcut-row"><span>Fullscreen</span><kbd>F</kbd></div>
-                      <div className="shortcut-row"><span>Mute</span><kbd>M</kbd></div>
+                    <div className="popup-backdrop" onClick={closeMessagesUi} />
+                    <div className="popup msg-popup">
+                      <div className="popup-header-row">
+                        <span className="popup-section-label">Messages</span>
+                        <button className="popup-expand-btn" title="Expand" onClick={() => { setShowPanel(false); setShowModal(true); }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                          </svg>
+                        </button>
+                      </div>
+                      <div className="msg-list">
+                        {messages.map(msg => (
+                          <div
+                            key={msg.id}
+                            className={`msg-item${activeMsgId === msg.id ? ' active' : ''}`}
+                            onClick={() => displayById(msg.id)}
+                          >
+                            {msg.emoji && <span className="msg-emoji">{msg.emoji}</span>}
+                            <div className="msg-item-content">
+                              <div className="msg-item-label">{msgLabel(msg.lines)}</div>
+                              <div className="msg-item-preview">{msg.lines.filter(l => l.trim()).join(' · ')}</div>
+                            </div>
+                            <div className="msg-item-actions">
+                              {msg.id !== HOME_CLOCK_MESSAGE_ID && (
+                                <button type="button" className="msg-item-edit" title="Edit" onClick={(e) => startEditMessage(msg, e)}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                  </svg>
+                                </button>
+                              )}
+                              <button type="button" className="msg-item-delete" onClick={(e) => deleteMessage(msg.id, e)}>×</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {(addingNew || editingMessageId !== null) ? (
+                        <MessageComposer
+                          className="add-form"
+                          value={draftText}
+                          onChange={setDraftText}
+                          filterLine={filterLine}
+                          title={editingMessageId !== null ? 'Edit message' : 'New message'}
+                          variant="panel"
+                          submitLabel={editingMessageId !== null ? 'Save' : 'Add'}
+                          onCancel={cancelComposer}
+                          onSubmit={finishComposer}
+                          autoFocus
+                        />
+                      ) : (
+                        <button type="button" className="add-new-btn" onClick={() => { setEditingMessageId(null); setAddingNew(true); setDraftText(''); }}>+ New message</button>
+                      )}
                     </div>
                   </>
                 )}
               </div>
-            )}
+
+              {/* Cast popup */}
+              <div className="popup-wrap">
+                <button
+                  className={`ctrl-btn${isCasting ? ' ctrl-btn--active' : ''}`}
+                  onClick={() => setShowCast(v => !v)}
+                  title={isCasting ? 'Stop casting' : 'Cast'}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6" />
+                    <line x1="2" y1="20" x2="2.01" y2="20" />
+                  </svg>
+                </button>
+                {showCast && (
+                  <>
+                    <div className="popup-backdrop" onClick={() => setShowCast(false)} />
+                    <div className="popup cast-popup">
+                      <div className="popup-section-label">Cast</div>
+                      <button
+                        className="cast-option"
+                        onClick={() => {
+                          setShowCast(false);
+                          isCasting ? stopCasting() : startCasting(tvUrl);
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6" />
+                          <line x1="2" y1="20" x2="2.01" y2="20" />
+                        </svg>
+                        <div className="cast-option-text">
+                          <span className="cast-option-title">{isCasting ? 'Stop casting' : 'Cast to TV'}</span>
+                          <span className="cast-option-desc">{isCasting ? 'Disconnect from external display' : 'Send to a connected TV or monitor'}</span>
+                        </div>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Info / shortcuts popup (desktop / tablet only) */}
+              {!isMobile && (
+                <div className="popup-wrap">
+                  <button type="button" className="ctrl-btn" title="Shortcuts" onClick={() => setShowShortcuts(v => !v)}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
+                    </svg>
+                  </button>
+                  {showShortcuts && (
+                    <>
+                      <div className="popup-backdrop" onClick={() => setShowShortcuts(false)} />
+                      <div className="popup shortcuts-popup">
+                        <div className="popup-section-label">Shortcuts</div>
+                        <div className="shortcut-row"><span>Messages</span><kbd>B</kbd></div>
+                        <div className="shortcut-row"><span>Fullscreen</span><kbd>F</kbd></div>
+                        <div className="shortcut-row"><span>Mute</span><kbd>M</kbd></div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
         </div>
       </div>
 
@@ -462,7 +515,7 @@ function DesktopMode({ onPairDevice, isMobile }) {
               <h3>Messages</h3>
               <button type="button" className="modal-close" onClick={closeMessagesUi}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 6L6 18M6 6l12 12"/>
+                  <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
             </div>
