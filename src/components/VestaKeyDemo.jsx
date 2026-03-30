@@ -233,6 +233,8 @@ function SolariSegment({ target, width, height, fontSize, flipSpeed }) {
   return (
     <li className="solari-segment" style={{ width, height: height + 14, fontSize, paddingBottom: 14 }}>
       <div style={{ position: 'relative', width, height }}>
+        <div className="solari-notch solari-notch-left" />
+        <div className="solari-notch solari-notch-right" />
         <div ref={frontRef} className="solari-front" style={{ lineHeight: height + 'px' }} />
         <div ref={flipBackRef} className="solari-flip-back" style={{ lineHeight: height + 'px', transformOrigin: `0 ${half}px` }} />
         <div ref={flipFrontRef} className="solari-flip-front" style={{ transformOrigin: `0 ${half}px` }} />
