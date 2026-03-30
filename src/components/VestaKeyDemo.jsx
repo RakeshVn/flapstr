@@ -49,6 +49,8 @@ const css = `
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
+  overflow: visible;
+  z-index: 0;
 }
 .solari-front,
 .solari-flip-front,
@@ -99,31 +101,23 @@ const css = `
   overflow: hidden;
   border-radius: 0 0 4px 4px;
 }
-.solari-segment::before {
-  content: '';
+.solari-notch {
   position: absolute;
   top: 50%;
-  left: -5px;
-  transform: translateY(-50%);
   width: 10px;
-  height: 10px;
+  height: 12px;
   border-radius: 50%;
   background: #1a1a1a;
-  z-index: 20;
+  transform: translateY(-50%);
+  z-index: 30;
   pointer-events: none;
+  box-shadow: inset 1px 0 2px rgba(0,0,0,0.6);
 }
-.solari-segment::after {
-  content: '';
-  position: absolute;
-  top: 50%;
+.solari-notch-left {
+  left: -5px;
+}
+.solari-notch-right {
   right: -5px;
-  transform: translateY(-50%);
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #1a1a1a;
-  z-index: 20;
-  pointer-events: none;
 }
 .solari-flap-stack {
   position: absolute;
@@ -239,6 +233,8 @@ function SolariSegment({ target, width, height, fontSize, flipSpeed }) {
   return (
     <li className="solari-segment" style={{ width, height: height + 14, fontSize, paddingBottom: 14 }}>
       <div style={{ position: 'relative', width, height }}>
+        <div className="solari-notch solari-notch-left" />
+        <div className="solari-notch solari-notch-right" />
         <div ref={frontRef} className="solari-front" style={{ lineHeight: height + 'px' }} />
         <div ref={flipBackRef} className="solari-flip-back" style={{ lineHeight: height + 'px', transformOrigin: `0 ${half}px` }} />
         <div ref={flipFrontRef} className="solari-flip-front" style={{ transformOrigin: `0 ${half}px` }} />
