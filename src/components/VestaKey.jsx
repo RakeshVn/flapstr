@@ -143,8 +143,13 @@ const VestaKey = memo(function VestaKey({
         <div className="vk-split-line" />
       </div>
 
-      {/* Bottom decorative stripe */}
-      <div className="vk-bottom-stripe" />
+      {/* Bottom flap stack */}
+      <div className="vk-flap-stack">
+        <div className="vk-flap-stack-line" />
+        <div className="vk-flap-stack-line" />
+        <div className="vk-flap-stack-line" />
+        <div className="vk-flap-stack-line" />
+      </div>
     </div>
   );
 }, (a, b) =>
