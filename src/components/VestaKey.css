@@ -1,23 +1,25 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   VestaKey — Realistic Split-Flap Tile
+   VestaKey — Realistic Split-Flap Tile with notches & flap stack
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .vk-cell {
   --vk-size: 72px;
-  --vk-w: calc(var(--vk-size) * 0.73);
+  --vk-w: calc(var(--vk-size) * 0.68);
   --vk-h: var(--vk-size);
   --vk-half: calc(var(--vk-h) / 2);
   --vk-radius: calc(var(--vk-size) * 0.06);
-  --vk-gap: 2px;
-  --vk-font: calc(var(--vk-size) * 0.55);
+  --vk-gap: 1.5px;
+  --vk-font: calc(var(--vk-size) * 0.58);
+  --vk-notch: calc(var(--vk-size) * 0.07);
 
   width: var(--vk-w);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  position: relative;
 }
 
-/* ── Flap Area (the main tile) ── */
+/* ── Flap Area (the main tile housing) ── */
 .vk-flap-area {
   position: relative;
   width: var(--vk-w);
@@ -25,22 +27,30 @@
   perspective: 400px;
   border-radius: var(--vk-radius);
   background: #1a1a1a;
-  overflow: hidden;
+  overflow: visible;
 }
 
-/* ── Ridges (subtle horizontal lines on the housing) ── */
-.vk-ridges {
+/* ── Side Notches (circular cutouts at the split line) ── */
+.vk-flap-area::before,
+.vk-flap-area::after {
+  content: '';
   position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
+  top: 50%;
+  width: var(--vk-notch);
+  height: var(--vk-notch);
+  border-radius: 50%;
+  background: #1a1a1a;
+  transform: translateY(-50%);
+  z-index: 25;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
 }
-.vk-ridge {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.02);
+
+.vk-flap-area::before {
+  left: calc(var(--vk-notch) * -0.35);
+}
+
+.vk-flap-area::after {
+  right: calc(var(--vk-notch) * -0.35);
 }
 
 /* ── Character Style ── */
@@ -71,38 +81,36 @@
 
 .vk-half-top {
   top: var(--vk-gap);
-  background: linear-gradient(180deg, #171717 0%, #141414 40%, #121212 100%);
+  background: linear-gradient(180deg, #1e1e1e 0%, #191919 40%, #151515 100%);
   border-radius: var(--vk-radius) var(--vk-radius) 0 0;
   box-shadow:
     inset 0 2px 3px rgba(0, 0, 0, 0.35),
-    inset 1px 0 0 rgba(255, 255, 255, 0.02),
-    inset -1px 0 0 rgba(255, 255, 255, 0.02);
+    inset 1px 0 0 rgba(255, 255, 255, 0.03),
+    inset -1px 0 0 rgba(255, 255, 255, 0.03);
 }
 
 .vk-half-top .vk-char {
-  /* Full-height char but clipped to top half */
   height: var(--vk-h);
   top: 0;
 }
 
 .vk-half-bottom {
   bottom: var(--vk-gap);
-  background: linear-gradient(180deg, #0e0e0e 0%, #111111 30%, #0f0f0f 100%);
+  background: linear-gradient(180deg, #111111 0%, #141414 30%, #121212 100%);
   border-radius: 0 0 var(--vk-radius) var(--vk-radius);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    inset 1px 0 0 rgba(255, 255, 255, 0.015),
-    inset -1px 0 0 rgba(255, 255, 255, 0.015),
+    inset 1px 0 0 rgba(255, 255, 255, 0.02),
+    inset -1px 0 0 rgba(255, 255, 255, 0.02),
     inset 0 -2px 4px rgba(0, 0, 0, 0.25);
 }
 
 .vk-half-bottom .vk-char {
   height: var(--vk-h);
-  /* Shift char up so bottom half is visible */
   top: calc(-1 * (var(--vk-half) - var(--vk-gap)));
 }
 
-/* ── Shadow overlay on bottom half (darkens during flip, fades out) ── */
+/* ── Shadow overlay on bottom half ── */
 .vk-shadow-overlay {
   position: absolute;
   inset: 0;
@@ -125,7 +133,7 @@
 /* Top flap — drops down from top */
 .vk-flap-top {
   top: var(--vk-gap);
-  background: linear-gradient(180deg, #171717 0%, #141414 40%, #121212 100%);
+  background: linear-gradient(180deg, #1e1e1e 0%, #191919 40%, #151515 100%);
   border-radius: var(--vk-radius) var(--vk-radius) 0 0;
   transform-origin: bottom center;
   box-shadow:
@@ -150,7 +158,7 @@
 /* Bottom flap — rises up from bottom */
 .vk-flap-bottom {
   bottom: var(--vk-gap);
-  background: linear-gradient(180deg, #0e0e0e 0%, #111111 30%, #0f0f0f 100%);
+  background: linear-gradient(180deg, #111111 0%, #141414 30%, #121212 100%);
   border-radius: 0 0 var(--vk-radius) var(--vk-radius);
   transform-origin: top center;
   transform: rotateX(90deg);
@@ -188,17 +196,43 @@
     0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
-/* ── Bottom Decorative Stripe ── */
-.vk-bottom-stripe {
-  height: calc(var(--vk-size) * 0.04);
-  min-height: 2px;
+/* ── Bottom Flap Stack (visible flap edges below tile) ── */
+.vk-flap-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
   margin-top: 1px;
-  background: linear-gradient(90deg,
-    rgba(255, 255, 255, 0.03) 0%,
-    rgba(255, 255, 255, 0.06) 50%,
-    rgba(255, 255, 255, 0.03) 100%
-  );
+}
+
+.vk-flap-stack-line {
+  height: 2px;
+  background: #0f0f0f;
   border-radius: 0 0 1px 1px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.03),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+}
+
+.vk-flap-stack-line:nth-child(1) {
+  width: calc(var(--vk-w) - 4px);
+}
+
+.vk-flap-stack-line:nth-child(2) {
+  width: calc(var(--vk-w) - 8px);
+  margin-top: 1px;
+}
+
+.vk-flap-stack-line:nth-child(3) {
+  width: calc(var(--vk-w) - 12px);
+  margin-top: 1px;
+  opacity: 0.7;
+}
+
+.vk-flap-stack-line:nth-child(4) {
+  width: calc(var(--vk-w) - 16px);
+  margin-top: 1px;
+  opacity: 0.4;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
