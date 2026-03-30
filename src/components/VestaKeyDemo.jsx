@@ -49,6 +49,8 @@ const css = `
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
+  overflow: visible;
+  z-index: 0;
 }
 .solari-front,
 .solari-flip-front,
