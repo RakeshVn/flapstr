@@ -4,6 +4,7 @@ import Header from './components/Header';
 import Hero from './components/Hero';
 import TVMode from './components/TVMode';
 import MobileMode from './components/MobileMode';
+import VestaKeyDemo from './components/VestaKeyDemo';
 import MessageComposer, { linesToDraftText } from './components/MessageComposer';
 import { SoundEngine } from './SoundEngine';
 import { MESSAGES, HOME_MESSAGE_PAUSE_MS, TOTAL_TRANSITION, CHARSET, splitGraphemes, isEmojiChar, getClockLines } from './constants';
@@ -22,6 +23,11 @@ const msgLabel = (lines) => lines.find(l => l.trim()) || 'Message';
 const HOME_CLOCK_MESSAGE_ID = 1;
 
 export default function App() {
+  // Demo page route
+  if (window.location.pathname === '/demo/vestakey') {
+    return <VestaKeyDemo />;
+  }
+
   const [mode, setMode] = useState(() => detectDevice());
   const [tvModeForced, setTvModeForced] = useState(false);
   const [mobilePairingOpen, setMobilePairingOpen] = useState(false);

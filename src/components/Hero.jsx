@@ -3,7 +3,7 @@ export default function Hero() {
     <section className="hero">
       <h1>Turn any TV into a Vestaboard.</h1>
       <p className="subtitle">
-        Control it from your phone. No hardware. Just open and flip.
+        Control it from your phone. No hardware. No subscription. Just open and flip.
       </p>
       <div className="scroll-indicator">
         <span>Scroll</span>
